@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: aiko-web
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    autoDeploy: true
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: AZURE_TTS_KEY
+        sync: false
+      - key: AZURE_TTS_REGION
+        sync: false

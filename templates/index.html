@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Aiko | Ethereal Intelligence</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#500989",
+                        "secondary-container": "#85145a",
+                        "inverse-primary": "#7b41b4",
+                        "on-error-container": "#ffdad6",
+                        "primary-container": "#c084fc",
+                        "surface-container-high": "#282a30",
+                        "secondary-fixed-dim": "#ffafd3",
+                        "surface-dim": "#111319",
+                        "surface-container-low": "#191b22",
+                        "secondary-fixed": "#ffd8e7",
+                        "on-tertiary-fixed": "#000767",
+                        "on-tertiary-container": "#1b2692",
+                        "on-tertiary": "#131e8c",
+                        "on-secondary": "#620040",
+                        "background": "#111319",
+                        "on-primary-fixed": "#2c0051",
+                        "surface-container-highest": "#33343b",
+                        "on-surface": "#e2e2eb",
+                        "surface-container-lowest": "#0c0e14",
+                        "secondary": "#ffafd3",
+                        "surface-variant": "#33343b",
+                        "on-secondary-container": "#ff93c8",
+                        "tertiary": "#bdc2ff",
+                        "inverse-on-surface": "#2e3037",
+                        "on-primary": "#490081",
+                        "primary-fixed-dim": "#ddb8ff",
+                        "surface-container": "#1e1f26",
+                        "on-tertiary-fixed-variant": "#2f3aa3",
+                        "tertiary-container": "#8c96ff",
+                        "on-secondary-fixed-variant": "#85145a",
+                        "primary": "#ddb8ff",
+                        "surface": "#111319",
+                        "error-container": "#93000a",
+                        "inverse-surface": "#e2e2eb",
+                        "outline": "#978d9d",
+                        "tertiary-fixed": "#e0e0ff",
+                        "on-error": "#690005",
+                        "on-primary-fixed-variant": "#62259b",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed": "#3d0026",
+                        "on-background": "#e2e2eb",
+                        "surface-tint": "#ddb8ff",
+                        "outline-variant": "#4c4452",
+                        "on-surface-variant": "#cec3d3",
+                        "tertiary-fixed-dim": "#bdc2ff",
+                        "surface-bright": "#373940",
+                        "primary-fixed": "#f0dbff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Plus Jakarta Sans"],
+                        "label": ["Plus Jakarta Sans"]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="text-on-surface antialiased selection:bg-primary-container selection:text-on-primary-container">
+    <section id="entry-screen" class="entry-screen" aria-label="Choose how to talk to Aiko">
+        <div class="entry-mesh entry-mesh-primary"></div>
+        <div class="entry-mesh entry-mesh-secondary"></div>
+        <div class="entry-noise"></div>
+
+        <div class="entry-presence" aria-hidden="true">
+            <div class="entry-orb"></div>
+            <div class="entry-orb-ring"></div>
+        </div>
+
+        <div class="entry-copy">
+            <p class="entry-kicker">Aiko</p>
+            <h1>How would you like to enter the conversation?</h1>
+            <p>Choose the rhythm that fits this moment.</p>
+        </div>
+
+        <div class="entry-options" aria-label="Aiko interaction modes">
+            <button class="entry-card entry-card-voice" type="button" onclick="chooseAikoMode('voice')">
+                <span class="material-symbols-outlined entry-card-icon">mic</span>
+                <span class="entry-card-copy">
+                    <span class="entry-card-title">Voice Conversation</span>
+                    <span class="entry-card-subtitle">Talk naturally with Aiko</span>
+                </span>
+            </button>
+
+            <button class="entry-card entry-card-text-mode" type="button" onclick="chooseAikoMode('text')">
+                <span class="material-symbols-outlined entry-card-icon">chat_bubble</span>
+                <span class="entry-card-copy">
+                    <span class="entry-card-title">Text Chat</span>
+                    <span class="entry-card-subtitle">Type and chat at your pace</span>
+                </span>
+            </button>
+        </div>
+    </section>
+
+    <main id="main-interface" class="app-shell min-h-screen px-6 pt-10 pb-36 relative overflow-hidden" aria-hidden="true">
+        <div class="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-primary/5 blur-[120px]"></div>
+        <div class="absolute bottom-[-5%] left-[20%] w-[40%] h-[40%] rounded-full bg-secondary/5 blur-[100px]"></div>
+
+        <div class="max-w-5xl mx-auto h-full flex flex-col relative z-10">
+            <div class="text-2xl font-bold text-purple-200 font-headline tracking-tighter mb-16">
+                Aiko
+            </div>
+
+            <section class="relative w-full mb-10 md:mb-14">
+                <div class="w-48 h-48 md:w-72 md:h-72 rounded-full aiko-pulse absolute -top-12 -left-4 md:left-12"></div>
+                <div class="relative z-10 pl-8 md:pl-24 pt-8 md:pt-12">
+                    <h1 class="text-4xl md:text-6xl font-headline font-extrabold tracking-tighter text-on-surface leading-tight text-glow">
+                        I sense your <span class="text-primary italic font-light">frequency</span>,<br>
+                        shall we begin?
+                    </h1>
+                    <p class="text-on-surface-variant max-w-md mt-6 font-light leading-relaxed">
+                        Aiko is listening. Your thoughts are the canvas for our current interaction.
+                    </p>
+                </div>
+            </section>
+
+            <section class="glass-panel aura-shadow rounded-[2rem] border border-white/5 p-4 md:p-6 h-[52vh] min-h-[24rem] max-h-[64vh] flex flex-col">
+                <div class="flex items-center justify-between gap-4 mb-4">
+                    <p class="text-on-surface-variant text-xs uppercase tracking-[0.2em] font-headline opacity-60">Aiko Consciousness</p>
+                    <div class="flex items-center gap-3">
+                        <div class="flex gap-1 h-6 items-end">
+                            <div class="w-1 bg-primary/40 rounded-full h-2 animate-[pulse_1s_infinite]"></div>
+                            <div class="w-1 bg-primary/60 rounded-full h-4 animate-[pulse_1.2s_infinite]"></div>
+                            <div class="w-1 bg-primary rounded-full h-6 animate-[pulse_0.8s_infinite]"></div>
+                            <div class="w-1 bg-primary/60 rounded-full h-4 animate-[pulse_1.1s_infinite]"></div>
+                            <div class="w-1 bg-primary/40 rounded-full h-2 animate-[pulse_0.9s_infinite]"></div>
+                        </div>
+                        <span class="text-[10px] uppercase tracking-widest text-primary/60 font-headline">Syncing Pulse</span>
+                    </div>
+                </div>
+
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <p id="profile-info" class="text-on-surface-variant/80">
+                        Memory feature: say "my name is Alex and secret code moon77".
+                    </p>
+                    <div class="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onclick="openIdentityModal('set')"
+                            class="px-3 py-1.5 rounded-md bg-surface-container-highest/50 hover:bg-surface-container-highest/80 text-primary-fixed-dim transition-colors"
+                        >
+                            Set Identity
+                        </button>
+                        <button
+                            type="button"
+                            onclick="openIdentityModal('resume')"
+                            class="px-3 py-1.5 rounded-md bg-primary-container/60 hover:bg-primary-container text-on-primary-container transition-colors"
+                        >
+                            Resume Chat
+                        </button>
+                    </div>
+                </div>
+
+                <div id="chatbox" class="flex-1 min-h-0 overflow-y-auto space-y-4 pr-2"></div>
+            </section>
+        </div>
+    </main>
+
+    <footer id="chat-controls" class="app-shell fixed bottom-0 left-0 w-full z-50 flex flex-col items-center px-6 pb-8 pt-4 pointer-events-none" aria-hidden="true">
+        <div class="w-full max-w-2xl glass-panel rounded-full p-2 flex items-center gap-2 border border-white/5 aura-shadow pointer-events-auto mb-6 transform transition-transform hover:scale-[1.02] duration-500">
+            <input
+                id="message"
+                class="bg-transparent border-none focus:ring-0 flex-grow text-on-surface placeholder-on-surface-variant/40 px-4 font-light tracking-wide min-w-0"
+                placeholder="Speak your thoughts..."
+                type="text"
+                onkeypress="if(event.key === 'Enter'){sendMessage()}"
+            >
+            <div class="flex items-center gap-2">
+                <button
+                    class="w-12 h-12 rounded-full bg-surface-container-highest/50 flex items-center justify-center text-primary-fixed-dim hover:bg-primary-container hover:text-on-primary-container transition-all"
+                    onclick="beginConversationFromUser()"
+                    aria-label="Start microphone"
+                >
+                    <span class="material-symbols-outlined">mic</span>
+                </button>
+                <button
+                    class="w-12 h-12 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center hover:shadow-[0_0_20px_rgba(192,132,252,0.4)] transition-all"
+                    onclick="sendMessage()"
+                    aria-label="Send message"
+                >
+                    <span class="material-symbols-outlined">north_east</span>
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <div id="identity-modal" class="identity-modal hidden" aria-hidden="true">
+        <div class="identity-modal-backdrop" onclick="closeIdentityModal()"></div>
+        <div class="identity-modal-card glass-panel aura-shadow border border-white/10">
+            <p id="identity-modal-title" class="identity-modal-title">Set Identity</p>
+            <p id="identity-modal-subtitle" class="identity-modal-subtitle">
+                Enter your name and secret code.
+            </p>
+
+            <label class="identity-modal-label" for="identity-name">Name</label>
+            <input id="identity-name" class="identity-modal-input" type="text" placeholder="Alex">
+
+            <label class="identity-modal-label" for="identity-code">Secret code</label>
+            <input id="identity-code" class="identity-modal-input" type="password" placeholder="moon77">
+
+            <div class="identity-modal-actions">
+                <button type="button" class="identity-modal-btn identity-modal-btn-secondary" onclick="closeIdentityModal()">
+                    Cancel
+                </button>
+                <button id="identity-modal-submit" type="button" class="identity-modal-btn identity-modal-btn-primary" onclick="submitIdentityModal()">
+                    Save
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <script src="/static/script.js"></script>
+</body>
+</html>

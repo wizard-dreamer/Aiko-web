@@ -1,17 +1,10 @@
 const chatbox = document.getElementById("chatbox")
 const messageInput = document.getElementById("message")
-const profileInfo = document.getElementById("profile-info")
-const identityModal = document.getElementById("identity-modal")
-const identityModalTitle = document.getElementById("identity-modal-title")
-const identityModalSubtitle = document.getElementById("identity-modal-subtitle")
-const identityModalNameInput = document.getElementById("identity-name")
-const identityModalCodeInput = document.getElementById("identity-code")
-const identityModalSubmitBtn = document.getElementById("identity-modal-submit")
 const entryScreen = document.getElementById("entry-screen")
 const mainInterface = document.getElementById("main-interface")
 const chatControls = document.getElementById("chat-controls")
 const socket = io()
-const PROFILE_STORAGE_KEY = "aiko_profile_v1"
+const CHAT_MEMORY_STORAGE_KEY = "aiko_chat_memory_v1"
 
 let speechUnlocked = false
 let microphoneReady = false
@@ -36,8 +29,7 @@ let lastRecognizedAt = 0
 let hasAnnouncedAzureFallback = false
 let hasLoggedFallbackVoiceChoice = false
 let azureTtsAvailable = true
-let activeProfile = loadProfile()
-let identityModalMode = "set"
+let chatMemory = loadChatMemory()
 const THINK_DELAY_MIN = 350
 const THINK_DELAY_MAX = 500
 const BETWEEN_SENTENCE_PAUSE_MIN = 200
@@ -58,124 +50,66 @@ function appendAssistantMessage(text){
     appendMessage("ai", `Aiko: ${text}`)
 }
 
-function loadProfile(){
+function loadChatMemory(){
     try{
-        const raw = window.localStorage.getItem(PROFILE_STORAGE_KEY)
+        const raw = window.localStorage.getItem(CHAT_MEMORY_STORAGE_KEY)
         if(!raw){
-            return null
+            return []
         }
 
         const parsed = JSON.parse(raw)
-        const name = (parsed?.name || "").trim()
-        const code = (parsed?.code || "").trim()
-        if(!name || !code){
-            return null
+        if(!Array.isArray(parsed)){
+            return []
         }
 
-        return {name, code}
+        return parsed
+            .filter((item) => item && (item.role === "user" || item.role === "assistant") && typeof item.content === "string")
+            .map((item) => ({role: item.role, content: item.content.trim()}))
+            .filter((item) => item.content.length > 0)
+            .slice(-40)
     }catch(err){
-        console.log("Failed to load profile", err)
-        return null
+        console.log("Failed to load chat memory", err)
+        return []
     }
 }
 
-function saveProfile(profile){
-    const name = (profile?.name || "").trim()
-    const code = (profile?.code || "").trim()
-    if(!name || !code){
-        return
-    }
-
-    activeProfile = {name, code}
-    window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(activeProfile))
-    refreshProfileInfo()
+function persistChatMemory(){
+    window.localStorage.setItem(CHAT_MEMORY_STORAGE_KEY, JSON.stringify(chatMemory.slice(-40)))
 }
 
-function refreshProfileInfo(){
-    if(!profileInfo){
+function addChatMemory(role, content){
+    if((role !== "user" && role !== "assistant") || !content){
         return
     }
 
-    if(activeProfile?.name && activeProfile?.code){
-        profileInfo.textContent = `Memory active for ${activeProfile.name}. Secret code saved on this browser.`
-        return
+    chatMemory.push({role, content})
+    if(chatMemory.length > 40){
+        chatMemory = chatMemory.slice(-40)
     }
-
-    profileInfo.textContent = 'Memory feature: say "my name is Alex and secret code moon77".'
+    persistChatMemory()
 }
 
-function openIdentityModal(mode = "set"){
-    identityModalMode = mode === "resume" ? "resume" : "set"
-
-    if(!identityModal || !identityModalNameInput || !identityModalCodeInput){
-        return
-    }
-
-    if(identityModalMode === "resume"){
-        identityModalTitle.textContent = "Resume Chat"
-        identityModalSubtitle.textContent = "Enter your saved name and secret code to continue your personal memory context."
-        identityModalSubmitBtn.textContent = "Resume"
-    }else{
-        identityModalTitle.textContent = "Set Identity"
-        identityModalSubtitle.textContent = "Enter your name and secret code for personal memory context."
-        identityModalSubmitBtn.textContent = "Save"
-    }
-
-    identityModalNameInput.value = activeProfile?.name || ""
-    identityModalCodeInput.value = activeProfile?.code || ""
-    identityModal.classList.remove("hidden")
-    identityModal.setAttribute("aria-hidden", "false")
-    window.setTimeout(() => {
-        identityModalNameInput.focus()
-    }, 0)
+function clearChatMemory(){
+    chatMemory = []
+    persistChatMemory()
 }
 
-function closeIdentityModal(){
-    if(!identityModal){
+function restoreChatUIFromMemory(){
+    if(!chatbox || !Array.isArray(chatMemory)){
         return
     }
 
-    identityModal.classList.add("hidden")
-    identityModal.setAttribute("aria-hidden", "true")
+    chatbox.innerHTML = ""
+    for(const item of chatMemory){
+        if(item.role === "user"){
+            appendMessage("user", `You: ${item.content}`)
+        }else{
+            appendMessage("ai", `Aiko: ${item.content}`)
+        }
+    }
 }
 
-function submitIdentityModal(){
-    if(!identityModalNameInput || !identityModalCodeInput){
-        return
-    }
-
-    const safeName = identityModalNameInput.value.trim()
-    const safeCode = identityModalCodeInput.value.trim()
-    if(!safeName || !safeCode){
-        appendAssistantMessage("Name and secret code are required.")
-        return
-    }
-
-    saveProfile({name: safeName, code: safeCode})
-    if(identityModalMode === "resume"){
-        appendAssistantMessage(`Welcome back, ${safeName}. Send a message to continue your memory context.`)
-    }else{
-        appendAssistantMessage(`Identity saved for ${safeName}. Your memory context is ready.`)
-    }
-    closeIdentityModal()
-}
-
-refreshProfileInfo()
-
-document.addEventListener("keydown", (event) => {
-    if(identityModal?.classList.contains("hidden")){
-        return
-    }
-
-    if(event.key === "Escape"){
-        closeIdentityModal()
-        return
-    }
-
-    if(event.key === "Enter"){
-        submitIdentityModal()
-    }
-})
+restoreChatUIFromMemory()
 
 function scrollChatToBottom(){
     if(!chatbox){
@@ -980,12 +914,15 @@ async function sendMessage(messageOverride = null){
         stopCurrentSpeech()
     }
 
+    const historySnapshot = chatMemory.slice(-10)
     appendMessage("user", `You: ${message}`)
+    addChatMemory("user", message)
     messageInput.value = ""
     await unlockSpeechOutput()
     scrollChatToBottom()
 
     if(isExitCommand(message)){
+        clearChatMemory()
         stopConversation("Stopping conversation")
         return
     }
@@ -998,17 +935,15 @@ async function sendMessage(messageOverride = null){
             },
             body: JSON.stringify({
                 message:message,
-                profile: activeProfile,
+                history: historySnapshot,
             })
         })
 
         const data = await response.json()
         const reply = data.reply || "I couldn't generate a reply."
-        if(data.profile){
-            saveProfile(data.profile)
-        }
 
         appendAssistantMessage(reply)
+        addChatMemory("assistant", reply)
         scrollChatToBottom()
         speakText(reply, {
             restartListening: conversationActive,

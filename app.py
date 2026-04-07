@@ -1,9 +1,7 @@
 from datetime import datetime
 from io import BytesIO
-import hashlib
 import os
 import re
-import sqlite3
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 from xml.sax.saxutils import escape
@@ -17,8 +15,6 @@ load_dotenv()
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
-
-DB_PATH = "memory.db"
 
 system_prompt = (
     "You are Aiko, a helpful real-time voice assistant. "
@@ -38,130 +34,6 @@ azure_tts_region = os.getenv("AZURE_TTS_REGION")
 def is_exit_command(text):
     normalized = text.lower().strip()
     return normalized in {"exit", "stop", "bye", "goodbye"}
-
-
-def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def init_db():
-    with get_db_connection() as conn:
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                name_key TEXT NOT NULL,
-                code_hash TEXT NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(name_key, code_hash)
-            )
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS messages (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
-                content TEXT NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(user_id) REFERENCES users(id)
-            )
-            """
-        )
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_messages_user_id_id ON messages(user_id, id)"
-        )
-
-
-def normalize_name(name):
-    return (name or "").strip()
-
-
-def normalize_name_key(name):
-    return normalize_name(name).lower()
-
-
-def hash_code(code):
-    return hashlib.sha256((code or "").strip().encode("utf-8")).hexdigest()
-
-
-def get_or_create_user(name, code):
-    safe_name = normalize_name(name)
-    name_key = normalize_name_key(safe_name)
-    code_hash = hash_code(code)
-
-    with get_db_connection() as conn:
-        user = conn.execute(
-            "SELECT id, name FROM users WHERE name_key = ? AND code_hash = ?",
-            (name_key, code_hash),
-        ).fetchone()
-        if user:
-            return user["id"], user["name"]
-
-        conn.execute(
-            "INSERT INTO users (name, name_key, code_hash) VALUES (?, ?, ?)",
-            (safe_name, name_key, code_hash),
-        )
-        user_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-        return user_id, safe_name
-
-
-def fetch_recent_messages(user_id, limit=10):
-    with get_db_connection() as conn:
-        rows = conn.execute(
-            """
-            SELECT role, content
-            FROM messages
-            WHERE user_id = ?
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            (user_id, limit),
-        ).fetchall()
-
-    rows = list(reversed(rows))
-    return [{"role": row["role"], "content": row["content"]} for row in rows]
-
-
-def store_message(user_id, role, content):
-    with get_db_connection() as conn:
-        conn.execute(
-            "INSERT INTO messages (user_id, role, content) VALUES (?, ?, ?)",
-            (user_id, role, content),
-        )
-
-
-def clear_user_messages(user_id):
-    with get_db_connection() as conn:
-        conn.execute("DELETE FROM messages WHERE user_id = ?", (user_id,))
-
-
-def extract_profile_from_message(text):
-    content = (text or "").strip()
-    if not content:
-        return None
-
-    patterns = [
-        r"my name is\s+(?P<name>[a-zA-Z0-9 _-]{2,40}).*?(?:secret\s*code|code)\s+(?:is\s+)?(?P<code>[a-zA-Z0-9_-]{3,40})",
-        r"name\s+(?P<name>[a-zA-Z0-9 _-]{2,40}).*?(?:secret\s*code|code)\s+(?:is\s+)?(?P<code>[a-zA-Z0-9_-]{3,40})",
-    ]
-
-    for pattern in patterns:
-        match = re.search(pattern, content, flags=re.IGNORECASE)
-        if match:
-            name = normalize_name(match.group("name"))
-            code = (match.group("code") or "").strip()
-            if name and code:
-                return {"name": name, "code": code}
-
-    return None
-
-
-init_db()
 
 
 def sanitize_tts_text(text):
@@ -221,72 +93,39 @@ def home():
 def chat():
     data = request.get_json(silent=True) or {}
     message = (data.get("message") or "").strip()
-    profile = data.get("profile") or {}
-    name = normalize_name(profile.get("name"))
-    code = (profile.get("code") or "").strip()
+    history = data.get("history") or []
 
     if not message:
         return jsonify({"reply": "Please enter a message."}), 200
-
-    extracted = None
-    if not name or not code:
-        extracted = extract_profile_from_message(message)
-        if extracted:
-            name = extracted["name"]
-            code = extracted["code"]
-
-    if not name or not code:
-        return jsonify(
-            {
-                "reply": (
-                    "Before we continue, tell me your name and secret code. "
-                    "Example: my name is Alex and secret code moon77."
-                ),
-                "needs_profile": True,
-            }
-        ), 200
-
-    user_id, display_name = get_or_create_user(name, code)
-    response_profile = {"name": display_name, "code": code}
-
-    if extracted:
-        return jsonify(
-            {
-                "reply": f"Welcome back, {display_name}. I have loaded your memory context.",
-                "profile": response_profile,
-            }
-        ), 200
 
     lowered = message.lower()
 
     if "time" in lowered:
         now = datetime.now().strftime("%I:%M %p")
-        return jsonify({"reply": f"The time is {now}.", "profile": response_profile}), 200
+        return jsonify({"reply": f"The time is {now}."}), 200
 
     if "date" in lowered or "day" in lowered:
         today = datetime.now().strftime("%A, %d %B %Y")
-        return jsonify({"reply": f"Today is {today}.", "profile": response_profile}), 200
+        return jsonify({"reply": f"Today is {today}."}), 200
 
     if is_exit_command(message):
-        return jsonify(
-            {
-                "reply": f"Stopping conversation, {display_name}. Your memory context is saved.",
-                "profile": response_profile,
-            }
-        ), 200
+        return jsonify({"reply": "Stopping conversation."}), 200
 
     if client is None:
-        return jsonify(
-            {
-                "reply": "GROQ_API_KEY is missing, so chat is unavailable.",
-                "profile": response_profile,
-            }
-        ), 200
-
-    store_message(user_id, "user", message)
+        return jsonify({"reply": "GROQ_API_KEY is missing, so chat is unavailable."}), 200
 
     messages = [{"role": "system", "content": system_prompt}]
-    messages.extend(fetch_recent_messages(user_id, limit=10))
+    if isinstance(history, list):
+        cleaned_history = []
+        for item in history[-10:]:
+            if not isinstance(item, dict):
+                continue
+            role = (item.get("role") or "").strip()
+            content = (item.get("content") or "").strip()
+            if role in {"user", "assistant"} and content:
+                cleaned_history.append({"role": role, "content": content})
+        messages.extend(cleaned_history)
+    messages.append({"role": "user", "content": message})
 
     try:
         response = client.chat.completions.create(
@@ -294,12 +133,11 @@ def chat():
             messages=messages,
         )
     except Exception as exc:
-        return jsonify({"reply": f"Chat request failed: {exc}", "profile": response_profile}), 200
+        return jsonify({"reply": f"Chat request failed: {exc}"}), 200
 
     reply = response.choices[0].message.content or "I couldn't generate a reply."
-    store_message(user_id, "assistant", reply)
 
-    return jsonify({"reply": reply, "profile": response_profile}), 200
+    return jsonify({"reply": reply}), 200
 
 
 @app.route("/tts", methods=["POST"])

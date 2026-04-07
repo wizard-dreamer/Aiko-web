@@ -151,28 +151,6 @@
                     </div>
                 </div>
 
-                <div class="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs">
-                    <p id="profile-info" class="text-on-surface-variant/80">
-                        Memory feature: say "my name is Alex and secret code moon77".
-                    </p>
-                    <div class="flex items-center gap-2">
-                        <button
-                            type="button"
-                            onclick="openIdentityModal('set')"
-                            class="px-3 py-1.5 rounded-md bg-surface-container-highest/50 hover:bg-surface-container-highest/80 text-primary-fixed-dim transition-colors"
-                        >
-                            Set Identity
-                        </button>
-                        <button
-                            type="button"
-                            onclick="openIdentityModal('resume')"
-                            class="px-3 py-1.5 rounded-md bg-primary-container/60 hover:bg-primary-container text-on-primary-container transition-colors"
-                        >
-                            Resume Chat
-                        </button>
-                    </div>
-                </div>
-
                 <div id="chatbox" class="flex-1 min-h-0 overflow-y-auto space-y-4 pr-2"></div>
             </section>
         </div>
@@ -205,31 +183,6 @@
             </div>
         </div>
     </footer>
-
-    <div id="identity-modal" class="identity-modal hidden" aria-hidden="true">
-        <div class="identity-modal-backdrop" onclick="closeIdentityModal()"></div>
-        <div class="identity-modal-card glass-panel aura-shadow border border-white/10">
-            <p id="identity-modal-title" class="identity-modal-title">Set Identity</p>
-            <p id="identity-modal-subtitle" class="identity-modal-subtitle">
-                Enter your name and secret code.
-            </p>
-
-            <label class="identity-modal-label" for="identity-name">Name</label>
-            <input id="identity-name" class="identity-modal-input" type="text" placeholder="Alex">
-
-            <label class="identity-modal-label" for="identity-code">Secret code</label>
-            <input id="identity-code" class="identity-modal-input" type="password" placeholder="moon77">
-
-            <div class="identity-modal-actions">
-                <button type="button" class="identity-modal-btn identity-modal-btn-secondary" onclick="closeIdentityModal()">
-                    Cancel
-                </button>
-                <button id="identity-modal-submit" type="button" class="identity-modal-btn identity-modal-btn-primary" onclick="submitIdentityModal()">
-                    Save
-                </button>
-            </div>
-        </div>
-    </div>
 
     <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
     <script src="/static/script.js"></script>
